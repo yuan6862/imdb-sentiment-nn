@@ -23,10 +23,11 @@ Sentiment analysis model trained on IMDB Top 500 movie reviews, auto-deployed vi
 
 | Component | Details |
 |-----------|---------|
-| Feature extraction | TF-IDF (5000 features, unigrams + bigrams) |
-| Input layer | 5000-dim TF-IDF vector |
-| Hidden layer 1 | Linear(5000→256) + ReLU + Dropout(0.3) |
-| Hidden layer 2 | Linear(256→64) + ReLU + Dropout(0.3) |
+| Feature extraction | TF-IDF (15000 features, unigrams + bigrams, sublinear_tf) |
+| Input layer | 15000-dim TF-IDF vector |
+| Hidden layer 1 | Linear(15000→512) + BatchNorm + LeakyReLU + Dropout(0.4) |
+| Hidden layer 2 | Linear(512→256) + BatchNorm + LeakyReLU + Dropout(0.3) |
+| Hidden layer 3 | Linear(256→64) + BatchNorm + LeakyReLU + Dropout(0.2) |
 | Output layer | Linear(64→1) + Sigmoid |
 | Task | Binary sentiment classification |
 
@@ -42,9 +43,10 @@ class SentimentNN(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_dim, 256), nn.ReLU(), nn.Dropout(0.3),
-            nn.Linear(256, 64),       nn.ReLU(), nn.Dropout(0.3),
-            nn.Linear(64, 1),         nn.Sigmoid(),
+            nn.Linear(input_dim, 512), nn.BatchNorm1d(512), nn.LeakyReLU(0.1), nn.Dropout(0.4),
+            nn.Linear(512, 256),       nn.BatchNorm1d(256), nn.LeakyReLU(0.1), nn.Dropout(0.3),
+            nn.Linear(256, 64),        nn.BatchNorm1d(64),  nn.LeakyReLU(0.1), nn.Dropout(0.2),
+            nn.Linear(64, 1),          nn.Sigmoid(),
         )
     def forward(self, x):
         return self.net(x)
@@ -78,8 +80,9 @@ print(f"{label} ({prob:.4f})")
 ## Training
 
 - **Dataset**: IMDB Top 500 (400 train / 100 test, stratified split)
-- **Optimizer**: Adam (lr=1e-3)
-- **Epochs**: 30
+- **Optimizer**: Adam (lr=1e-3, weight_decay=1e-4)
+- **Scheduler**: ReduceLROnPlateau (patience=5, factor=0.5)
+- **Epochs**: 100 (best checkpoint saved)
 - **Batch size**: 32
 
 ## CI/CD Pipeline
