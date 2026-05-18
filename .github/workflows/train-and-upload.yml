@@ -1,0 +1,61 @@
+name: Train and Upload to Hugging Face
+
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  train-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install PyTorch (CPU-only, faster download)
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install other dependencies
+        run: pip install -r requirements.txt
+
+      - name: Train model
+        run: python train.py
+
+      - name: Upload artifacts to Hugging Face Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'PYEOF'
+          import os
+          from huggingface_hub import HfApi
+
+          api = HfApi()
+          repo_id = "enzoliao/imdb-sentiment-nn"
+          token = os.environ["HF_TOKEN"]
+
+          api.create_repo(repo_id=repo_id, token=token, exist_ok=True, private=False)
+
+          files = {
+              "model/model.pt":        "model.pt",
+              "model/vectorizer.pkl":  "vectorizer.pkl",
+              "model/config.json":     "config.json",
+              "model/metrics.json":    "metrics.json",
+              "README.md":             "README.md",
+          }
+          for local_path, repo_path in files.items():
+              api.upload_file(
+                  path_or_fileobj=local_path,
+                  path_in_repo=repo_path,
+                  repo_id=repo_id,
+                  token=token,
+              )
+              print(f"Uploaded: {repo_path}")
+
+          print(f"\nDone! https://huggingface.co/{repo_id}")
+          PYEOF
