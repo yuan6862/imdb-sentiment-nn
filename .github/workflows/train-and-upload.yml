@@ -27,7 +27,7 @@ jobs:
       - name: Train model
         run: python train.py
 
-      - name: Upload artifacts to Hugging Face Hub
+      - name: Upload model to Hugging Face Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -41,21 +41,23 @@ jobs:
 
           api.create_repo(repo_id=repo_id, token=token, exist_ok=True, private=False)
 
-          files = {
-              "model/model.pt":        "model.pt",
-              "model/vectorizer.pkl":  "vectorizer.pkl",
-              "model/config.json":     "config.json",
-              "model/metrics.json":    "metrics.json",
-              "README.md":             "README.md",
-          }
-          for local_path, repo_path in files.items():
-              api.upload_file(
-                  path_or_fileobj=local_path,
-                  path_in_repo=repo_path,
-                  repo_id=repo_id,
-                  token=token,
-              )
-              print(f"Uploaded: {repo_path}")
+          # Upload the full model directory (DistilBERT weights + tokenizer + metrics)
+          api.upload_folder(
+              folder_path="model",
+              repo_id=repo_id,
+              token=token,
+              ignore_patterns=["checkpoint-*"],
+          )
+          print(f"Uploaded model directory")
+
+          # Upload README separately
+          api.upload_file(
+              path_or_fileobj="README.md",
+              path_in_repo="README.md",
+              repo_id=repo_id,
+              token=token,
+          )
+          print(f"Uploaded README.md")
 
           print(f"\nDone! https://huggingface.co/{repo_id}")
           PYEOF

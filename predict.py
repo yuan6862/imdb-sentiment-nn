@@ -1,59 +1,12 @@
-import torch
-import torch.nn as nn
-import pickle
-import re
 import sys
-import json
-
-
-def clean_text(text):
-    text = re.sub(r"<[^>]+>", " ", str(text))
-    text = re.sub(r"\s+", " ", text).strip()
-    return text.lower()
-
-
-class SentimentNN(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 512),
-            nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.1),
-            nn.Dropout(0.4),
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU(0.1),
-            nn.Dropout(0.3),
-            nn.Linear(256, 64),
-            nn.BatchNorm1d(64),
-            nn.LeakyReLU(0.1),
-            nn.Dropout(0.2),
-            nn.Linear(64, 1),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, x):
-        return self.net(x)
+from transformers import pipeline
 
 
 def predict(text, model_dir="model"):
-    with open(f"{model_dir}/config.json") as f:
-        config = json.load(f)
-    with open(f"{model_dir}/vectorizer.pkl", "rb") as f:
-        vectorizer = pickle.load(f)
-
-    model = SentimentNN(config["input_dim"])
-    model.load_state_dict(torch.load(f"{model_dir}/model.pt", map_location="cpu"))
-    model.eval()
-
-    import numpy as np
-    vec = vectorizer.transform([clean_text(text)]).toarray().astype("float32")
-    tensor = torch.tensor(vec)
-
-    with torch.no_grad():
-        prob = model(tensor).item()
-
-    return {"label": "POSITIVE" if prob >= 0.5 else "NEGATIVE", "score": round(prob, 4)}
+    clf = pipeline("text-classification", model=model_dir, tokenizer=model_dir)
+    result = clf(text, truncation=True, max_length=256)[0]
+    label = result["label"].upper()
+    return {"label": label, "score": round(result["score"], 4)}
 
 
 if __name__ == "__main__":
