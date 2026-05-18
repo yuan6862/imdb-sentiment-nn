@@ -79,7 +79,7 @@ print(f"{label} ({prob:.4f})")
 
 ## Training
 
-- **Dataset**: IMDB Top 500 (400 train / 100 test, stratified split)
+- **Dataset**: IMDB Full 50K (25,000 train / 25,000 test, standard split)
 - **Optimizer**: Adam (lr=1e-3, weight_decay=1e-4)
 - **Scheduler**: ReduceLROnPlateau (patience=5, factor=0.5)
 - **Epochs**: 100 (best checkpoint saved)
